@@ -1,16 +1,25 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
+import { aws_s3 as s3 } from 'aws-cdk-lib';
+import { aws_s3_notifications as s3_notifications } from 'aws-cdk-lib';
+import { aws_lambda as lambda } from 'aws-cdk-lib';
 
 export class SampleStackStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // The code that defines your stack goes here
+    const fileUploadLambdaHandler = new lambda.Function(this, 'FileUploadLambda', {
+      runtime: lambda.Runtime.PYTHON_3_11,
+      handler: 'index.handler',
+      functionName:"sample-bucket-file-upload-lambda-trigger",
+      code: lambda.Code.fromAsset('lambda'),
+    });
 
-    // example resource
-    // const queue = new sqs.Queue(this, 'SampleStackQueue', {
-    //   visibilityTimeout: cdk.Duration.seconds(300)
-    // });
-  }
+    const bucket = new s3.Bucket(this, 'SampleBucket', {
+      versioned: true,
+      bucketName: "sample-bucket",
+      blockPublicAccess: new s3.BlockPublicAccess({ blockPublicPolicy: true }),
+    });
+    bucket.grantWrite(fileUploadLambdaHandler);
+    bucket.addEventNotification(s3.EventType.OBJECT_CREATED, new s3_notifications.LambdaDestination(fileUploadLambdaHandler))};
 }
